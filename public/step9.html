@@ -1,0 +1,138 @@
+<html>
+  <head>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+    
+    <script src="https://infinite-fjord-38291.herokuapp.com/socket.io/socket.io.js"></script>
+    <script src="library.js"></script>
+
+  </head>
+  <body>
+    <div id="startingPage">
+      <h1> This is BLOBBERT </h1>
+      <p> Put your name in here </p>
+      <input id="name" type="text">
+      <button onclick="startGame()">Start</button>
+    </div>
+    
+    <img id="character" src="blobbert.png" style="display: none">
+    
+    
+    <script>
+      
+      var socket = io.connect('https://infinite-fjord-38291.herokuapp.com/');
+    socket.connect('https://infinite-fjord-38291.herokuapp.com/');
+      
+
+      var canvasWidth = 200;
+      var canvasHeight = 200;
+      var playerName = "";
+      var normalPlayerWidth = 10;
+      var playerWidth = normalPlayerWidth;
+      var zoomedIn = 5;
+      var foodSize = 5;
+      var amountOfFoods = 10;
+      var allPlayers = [];
+      var allFood = [];
+      var characterImg = 'blobbert.png';
+      var mouseX = 0;
+      var mouseY = 0;
+      var distance = 1;
+      var alive = false;
+      var characterLeft = 0;
+      var characterTop = 0;
+      var speed = 5;
+      var foodMassGain = 1;
+      
+      
+      function startGame() {
+        myGameArea.start(); 
+        document.getElementById("startingPage").style.display = "none"; 
+        
+        socket.on('playerLeft', function(data) {
+         allPlayers.splice(data, 1);
+         if (data < playerPosition) {
+          	playerPosition -= 1;
+         }
+       })
+        
+        playerName = document.getElementById("name").value;
+        socket.emit('startGame', [playerName, playerWidth, canvasWidth, canvasHeight, foodSize, amountOfFoods]);
+        
+        socket.on('playerConnected', function(data) {
+          connectToBoard(data);
+        })
+        
+        document.addEventListener("mousemove", function(e) {
+      		mouseX = e.clientX - window.innerWidth / 2;
+      		mouseY = e.clientY - window.innerHeight / 2;
+     			distance = Math.sqrt((mouseX) ** 2 + (mouseY) ** 2);
+      	})
+
+        socket.on('spawnBlock', function(data) {
+     			allFood.push(new component(foodSize, foodSize, "blue", data[0], data[1]))
+      	})
+
+       	socket.on('foodEaten', function(data) {
+        	count = 0;
+          for (var i = 0; i < data[1].length; i++) {
+            allFood.splice(data[1][i] - count, 1);
+            count += 1;
+          }
+          if (data[2] == playerPosition) {
+            playerWidth += foodMassGain * data[1].length;
+            zoomedIn /= 1.005 + (.005 * (foodMassGain * data[1].length));
+            eating = true;
+          }
+     		 })
+        
+        
+        //Last we need to add the function for eating the player
+    socket.on('killPlayer', function(data) {
+    	if (playerPosition == data[0]) {
+      	alive = false;
+      	location.reload();
+    	}
+    	if (playerPosition != data[1]) {
+      	allPlayers.splice(data[0], 1);
+    	}
+    	if (playerPosition > data[0]) {
+      	playerPosition -= 1;
+   	 }
+  	})
+        
+        
+        socket.on('boardChange', function(data) {
+          myGameArea.clear();
+          game.update();
+          updateCamera(data);
+
+          for (var i = 0; i < allFood.length; i++) {
+          	allFood[i].update();
+        	}
+
+          for (var i = 0; i < allPlayers.length; i++) {
+          	allPlayers[i].update();
+        	}
+          
+        })
+        
+      }
+      function updateGameArea() {
+        if (alive) {
+          document.getElementById("game").style.display = "block";
+          characterLeft += mouseX / distance * (speed / (playerWidth/2));
+        characterTop += mouseY / distance * (speed / (playerWidth/2));
+          checkCollision();
+
+          socket.emit("changeBoard", [characterLeft, characterTop, playerId, playerWidth, canvasWidth, canvasHeight, playerName])
+        }
+				
+      }
+    </script>
+  </body>
+</html>

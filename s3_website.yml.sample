@@ -1,0 +1,5 @@
+s3_id:
+s3_secret:
+s3_bucket: blobbert.io
+s3_endpoint: us-west-2
+site: public/
